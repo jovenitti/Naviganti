@@ -32,7 +32,7 @@ luogo = EarthLocation(lat=lat*u.deg, lon=lon*u.deg, height=0*u.m)
 
 #--TEMPO
 tz   = -0*u.hour  # booo...
-noon = Time('2012-7-12 12:00:00') - tz
+noon = Time('2018-6-21 12:00:00') - tz
 de_t = np.linspace(-3, 3, 100)*u.hour          # divido in 100 parti il tempo da 3 ore prima a 3 ore dopo
 time = noon+de_t
 
@@ -49,9 +49,9 @@ print("Longitudine: ", lon)
 print("Sun altitude = {.alt:.6}".format(sun_array[0]))   # NB che sarebbe uguale scrivere sole_altaz_array[0].alt
 print("Sun azimuth  = {.az:.6}".format(sun_array[0]))    #
 
-alt_arr = np.array(sun_array.alt)
-az_arr  = np.array(sun_array.az)
-az_arr  = np.where(az_arr > 180, az_arr-360, az_arr)
+#alt_arr = np.array(sun_array.alt)
+#az_arr  = np.array(sun_array.az)
+#az_arr  = np.where(az_arr > 180, az_arr-360, az_arr)
 
 plt.plot(az_arr, alt_arr)
 plt.xlabel('Sun Azimuth [deg]')
