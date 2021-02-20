@@ -2,8 +2,7 @@
 # alt-az del sole, data la latitudine
 # e l'ora dell'osservazione.
 
-
-
+ASSE = 23.45 
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,18 +28,18 @@ lat  = lat_arr[num]
 lon  = lon_arr[num]
 luogo = EarthLocation(lat=lat*u.deg, lon=lon*u.deg, height=0*u.m)
 
-
 #--TEMPO
-tz   = -0*u.hour  # booo...
-noon = Time('2018-6-21 12:00:00') - tz
-de_t = np.linspace(-3, 3, 100)*u.hour          # divido in 100 parti il tempo da 3 ore prima a 3 ore dopo
-time = noon+de_t
-
+if lat>ASSE:  data = '2018-5-21 12:00:00'  ; print("Uso il solstizio d'estate")
+if lat<=ASSE: data = '2018-12-21 12:00:00' ; print("Uso il solstizio d'inverno")
+tz   = round((lon-7)/15)*u.hour  # booo...
+de_t = np.linspace(-3, 3, 100)*u.hour          # METTI CENTOOOOOOO
+time = Time(data) - tz + de_t
 
 #--SOLE
 frame_altaz = AltAz(obstime=time,  location=luogo)
 sun_array   = get_sun(time).transform_to(frame_altaz)
-
+alt_arr     = np.array(sun_array.alt)          # solo perché preferiamo np...
+az_arr      = np.array(sun_array.az)
 
 #--PRINT AND PLOT
 print("\nControllo situazione iniziale: ")
@@ -48,15 +47,19 @@ print("Latitudine: ", lat)
 print("Longitudine: ", lon)
 print("Sun altitude = {.alt:.6}".format(sun_array[0]))   # NB che sarebbe uguale scrivere sole_altaz_array[0].alt
 print("Sun azimuth  = {.az:.6}".format(sun_array[0]))    #
-
-#alt_arr = np.array(sun_array.alt)
-#az_arr  = np.array(sun_array.az)
-#az_arr  = np.where(az_arr > 180, az_arr-360, az_arr)
+print("Culmine: ", az_arr[np.where(alt_arr == np.max(alt_arr))])
 
 plt.plot(az_arr, alt_arr)
+bussola = np.random.randint(-30, 30)
+plt.xlim(110+bussola, 250+bussola)
 plt.xlabel('Sun Azimuth [deg]')
 plt.ylabel('Sun Altitude [deg]')
 plt.show()
+
+
+
+
+
 
 
 
