@@ -1,0 +1,6 @@
+# index,   name,   lat[deg],   lon[deg]
+
+0, 'New York',     4.345, 4.567
+1, 'Los Angeles',  5.678, 1.098
+2, 'Miami',        0.987, 2.345
+3, 'Lisbona',      5.765, 9.345
