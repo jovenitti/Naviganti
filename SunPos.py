@@ -25,7 +25,9 @@ from astropy.coordinates import EarthLocation, AltAz
 #    PATH MANAGER    #
 #--------------------#
 
-num  = 12    # scegli la location (tra 0:20)
+num    = 4    # scegli la location (tra 0:20)
+ore    = 3    # numero di ore prima e dopo mezzogiorno da considerare
+frames = 72  # numero di parti in cui dividere il tempo (pari al numero di frame del video)
 
 path_images    = './Images/'
 path_locations = './Locations/'
@@ -40,7 +42,7 @@ nome_sum = path_locations + 'Summary.txt'
 nome_vid = ind_arr[num]+'__vid.mp4'
 nome_gri = ind_arr[num]+'__grid.png'
 nome_plt = ind_arr[num]+'__plot.png'
-nome_tmp = ind_arr[num]+'__tempi.txt'
+nome_tmp = ind_arr[num]+'__dati.txt'
 
 Path(nome_dir).mkdir(parents=True, exist_ok=True)
 
@@ -56,14 +58,14 @@ Path(nome_dir).mkdir(parents=True, exist_ok=True)
 #-----------------------------------------#
 if 1==0:
     f = open(nome_sum, "a")
-    for i in range(0,21):        
+    for i in range(len(ind_arr)):        
         lat  = lat_arr[i]
         lon  = lon_arr[i]
         luogo = EarthLocation(lat=lat*u.deg, lon=lon*u.deg, height=0*u.m)
         if lat>ASSE:  data = '2018-5-21 12:00:00' 
         if lat<=ASSE: data = '2018-12-21 12:00:00'
         tz   = round((lon-7)/15)*u.hour 
-        de_t = np.linspace(-3, 3, 10)*u.hour          # METTI CENTOOOOOOO
+        de_t = np.linspace(-3, 3, 40)*u.hour          # x la posizione approssimativa del massimo
         time = Time(data) - tz + de_t
         sun_array   = get_sun(time).transform_to(AltAz(obstime=time,  location=luogo))
         alt_arr     = np.array(sun_array.alt)          # solo perché preferiamo np...
@@ -91,7 +93,7 @@ luogo = EarthLocation(lat=lat*u.deg, lon=lon*u.deg, height=0*u.m)
 if lat>ASSE:  data = '2018-5-21 12:00:00'  ; print("Uso il solstizio d'estate")
 if lat<=ASSE: data = '2018-12-21 12:00:00' ; print("Uso il solstizio d'inverno")
 tz   = round((lon-7)/15)*u.hour 
-de_t = np.linspace(-3, 3, 20)*u.hour          # METTI CENTOOOOOOO
+de_t = np.linspace(-ore, ore, frames)*u.hour          # METTI CENTOOOOOOO
 time = Time(data) - tz + de_t
 
 #--SOLE
@@ -131,9 +133,6 @@ print()
 
 
 
-#----------------------------#
-#      IMMAGINI E VIDEO      #
-#----------------------------#
 
 #-- PARAMETRI GLOBALI
 bussola = np.random.randint(-20, 20)
@@ -144,89 +143,117 @@ xmax = 250+bussola
 figx = 800/DPI  #in inches, perché matplotlib
 figy = 600/DPI  #lavora con dim fisiche e DPI
 
-#-- PLOT CON ASSI (per vedere il plot della situazione...)
-plt.plot(az_arr, alt_arr, marker="o", linewidth=0.5, linestyle='dashed', markersize=12)
-plt.xlim(xmin, xmax)
-plt.ylim(ymin, ymax)
-plt.xlabel('Sun Azimuth [deg]')
-plt.ylabel('Sun Altitude [deg]')
-plt.text(125, 42, 'SCRIVI QUI ORA DI GREENWICH', fontsize=10)
-plt.savefig(nome_dir+nome_plt)
-
-#-- HOW TO SHRINK ORIGINAL IMAGE
-#size = 100, 100
-#im = Image.open(path_images + 'sun.png')
-#im.thumbnail(size, Image.ANTIALIAS)
-#im.save(path_images + 'isun.png')
 
 
-#-- PLOT COL MARKER SOLE (QUESTI SARANNO I FRAMES DEL VIDEO)
-im = image.imread(path_images + 'isun.png')
-image_size = im.shape[1], im.shape[0]
-for i in range(len(de_t)):
+
+#--------------------#
+#      IMMAGINI      #
+#--------------------#
+
+if 1==0:
+    #-- PLOT CON ASSI (per vedere il plot della situazione...)
+    plt.plot(az_arr, alt_arr, marker="o", linewidth=0.5, linestyle='dashed', markersize=12)
+    plt.xlim(xmin, xmax)
+    plt.ylim(ymin, ymax)
+    plt.xlabel('Sun Azimuth [deg]')
+    plt.ylabel('Sun Altitude [deg]')
+    plt.text(125, 42, 'SCRIVI QUI ORA DI GREENWICH', fontsize=10)
+    plt.savefig(nome_dir+nome_plt)
+    
+    #-- HOW TO SHRINK ORIGINAL IMAGE
+    #size = 100, 100
+    #im = Image.open(path_images + 'sun.png')
+    #im.thumbnail(size, Image.ANTIALIAS)
+    #im.save(path_images + 'isun.png')
+    
+    
+    #-- PLOT COL MARKER SOLE (QUESTI SARANNO I FRAMES DEL VIDEO)
+    im = image.imread(path_images + 'isun.png')
+    image_size = im.shape[1], im.shape[0]
+    for i in range(len(de_t)):
+        fig = plt.figure(dpi=DPI, figsize=(figx, figy))
+        ax  = fig.add_subplot(3,1,(1,2))
+        av  = fig.add_subplot(3,1,3)
+        av.axis('off')
+        line, = ax.plot(az_arr[i], alt_arr[i], "bo",mfc="None",mec="None",markersize=image_size[0] * (DPI/ 96))
+        ax.patch.set_alpha(0)
+        ax.set_xlim((xmin, xmax))
+        ax.set_ylim((ymin, ymax))
+        line._transform_path()
+        path, affine = line._transformed_path.get_transformed_points_and_affine()
+        path = affine.transform_path(path)
+        for pixelPoint in path.vertices: fig.figimage(im, pixelPoint[0]-image_size[0]/1., pixelPoint[1]-image_size[1]/1., origin="lower")
+        ax.axis('off')
+        plt.savefig(nome_dir +ind_arr[num]+'_img'+str(i)+'.png', dpi=DPI, bbox_inches='tight', transparent=True )
+        plt.close(fig)
+        print(i)
+        
+    
+    #-- FACCIO LA GRIGLIA PNG
     fig = plt.figure(dpi=DPI, figsize=(figx, figy))
     ax  = fig.add_subplot(3,1,(1,2))
     av  = fig.add_subplot(3,1,3)
     av.axis('off')
-    line, = ax.plot(az_arr[i], alt_arr[i], "bo",mfc="None",mec="None",markersize=image_size[0] * (DPI/ 96))
-    ax.patch.set_alpha(0)
+    ax.grid(color='k', linestyle=':', linewidth=1.)
     ax.set_xlim((xmin, xmax))
     ax.set_ylim((ymin, ymax))
-    line._transform_path()
-    path, affine = line._transformed_path.get_transformed_points_and_affine()
-    path = affine.transform_path(path)
-    for pixelPoint in path.vertices: fig.figimage(im, pixelPoint[0]-image_size[0]/1., pixelPoint[1]-image_size[1]/1., origin="lower")
-    ax.axis('off')
-    plt.savefig(nome_dir +ind_arr[num]+'_img'+str(i)+'.png', dpi=DPI, bbox_inches='tight', transparent=True )
-    plt.close(fig)
-    print(i)
+    ax.axvline(x=180, linewidth=1., color='red')
+    ax.xaxis.set_major_formatter(StrMethodFormatter(u"{x:.0f}°"))
+    ax.yaxis.set_major_formatter(StrMethodFormatter(u"{x:.0f}°"))
+    plt.savefig(nome_dir+nome_gri, dpi=DPI, bbox_inches='tight', transparent=True )
+    plt.close(fig)    
     
-
-#-- FACCIO LA GRIGLIA PNG
-fig = plt.figure(dpi=DPI, figsize=(figx, figy))
-ax  = fig.add_subplot(3,1,(1,2))
-av  = fig.add_subplot(3,1,3)
-av.axis('off')
-ax.grid(color='k', linestyle=':', linewidth=1.)
-ax.set_xlim((xmin, xmax))
-ax.set_ylim((ymin, ymax))
-ax.axvline(x=180, linewidth=1., color='red')
-ax.xaxis.set_major_formatter(StrMethodFormatter(u"{x:.0f}°"))
-ax.yaxis.set_major_formatter(StrMethodFormatter(u"{x:.0f}°"))
-plt.savefig(nome_dir+nome_gri, dpi=DPI, bbox_inches='tight', transparent=True )
-plt.close(fig)    
-
-
-#-- METTO IL MARE COME SFONDO
-for i in range(len(de_t)):
-    imbg = Image.open(path_images + 'mare_2.jpg')
-    imfg = Image.open(nome_dir +ind_arr[num]+'_img'+str(i)+'.png')
+    
+    #-- METTO IL MARE COME SFONDO
+    for i in range(len(de_t)):
+        imbg = Image.open(path_images + 'mare_2.jpg')
+        imfg = Image.open(nome_dir +ind_arr[num]+'_img'+str(i)+'.png')
+        imbg_width, imbg_height = imbg.size
+        imfg_resized = imfg.resize((imbg_width, imbg_height), Image.LANCZOS)
+        imbg.paste(imfg_resized, None, imfg_resized)
+        imbg.save(nome_dir +ind_arr[num]+'_img'+str(i)+'.png',"PNG")
+    
+    
+    #-- METTO UNA GRIGLIA NEL VIDEO SOLO PER FARE UNA PROVA...
+    pic = (np.where(alt_arr == np.max(alt_arr)))[0][0]-1
+    imbg = Image.open(nome_dir +ind_arr[num]+'_img'+str(pic)+'.png')
+    imfg = Image.open(nome_dir+nome_gri)
     imbg_width, imbg_height = imbg.size
     imfg_resized = imfg.resize((imbg_width, imbg_height), Image.LANCZOS)
     imbg.paste(imfg_resized, None, imfg_resized)
-    imbg.save(nome_dir +ind_arr[num]+'_img'+str(i)+'.png',"PNG")
+    imbg.save(nome_dir +ind_arr[num]+'_img'+str(pic)+'.png',"PNG")
 
 
-#-- METTO UNA GRIGLIA NEL VIDEO SOLO PER FARE UNA PROVA...
-pic = (np.where(alt_arr == np.max(alt_arr)))[0][0]-1
-imbg = Image.open(nome_dir +ind_arr[num]+'_img'+str(pic)+'.png')
-imfg = Image.open(nome_dir+nome_gri)
-imbg_width, imbg_height = imbg.size
-imfg_resized = imfg.resize((imbg_width, imbg_height), Image.LANCZOS)
-imbg.paste(imfg_resized, None, imfg_resized)
-imbg.save(nome_dir +ind_arr[num]+'_img'+str(pic)+'.png',"PNG")
 
 
-#-- FACCIO IL VIDEO            NB. Se le immagini sono trasparenti ffmpeg sbarella
-os.system("ffmpeg -r 1 -i "+nome_dir+ind_arr[num]+"_img%01d.png -vcodec mpeg4 -y "+nome_vid)
-os.system("mv "+nome_vid+" " + nome_dir)
 
 
-#-- SALVO ANCHE UN FILES COI TEMPI
-f = open(nome_dir+nome_tmp, "a")                       #questo servirà
-for t in time: f.write(str(t)+"\n")           #per stampare quello giusto
-f.close()                                     #sul frame dove l'utente si blocca...
 
+
+#----------------#
+#      VIDEO     #
+#----------------#
+if 1==0:
+    #-- FACCIO IL VIDEO            NB. Se le immagini sono trasparenti ffmpeg sbarella
+    os.system("ffmpeg -r 1 -i "+nome_dir+ind_arr[num]+"_img%01d.png -vcodec mpeg4 -y "+nome_vid)
+    os.system("mv "+nome_vid+" " + nome_dir)
+    
+
+
+
+
+
+#----------------#
+#      DATI      #
+#----------------#
+f = open(nome_dir+nome_tmp, "a")
+f.write('# LOCATION: '+ nam_arr[num]+'  ('+str(num)+')\n')    
+f.write('# N_frame\t tempo   \t   azimuth[deg]    \t    altitudine[deg]\n')    
+for i in range(len(time)):        
+    r = [ i, time[i], az_arr[i],  alt_arr[i] ]
+    f.write('  ;  '.join(map(str, r)))
+    f.write("\n")
+f.close()
 
 
 
